@@ -1,18 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:gap/gap.dart';
-import 'package:tasky/screens/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tasky/screens/main_screen.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  WelcomeScreen({super.key});
-
-  final TextEditingController _nameController = TextEditingController();
+class WelcomeScreen extends StatefulWidget {
+  const WelcomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  late TextEditingController _nameController;
+  late GlobalKey<FormState> _formKey;
+  late AutovalidateMode _autovalidateMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _formKey = GlobalKey<FormState>();
+    _autovalidateMode = AutovalidateMode.onUserInteraction;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: SafeArea(
+      child: SingleChildScrollView(
+        child: Form(
+          autovalidateMode: _autovalidateMode,
+          key: _formKey,
           child: Column(
             children: [
               SizedBox(height: 16),
@@ -83,16 +108,32 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 8),
                     TextFormField(
+                      validator: (String? value) {
+                        if (value == null || value
+                            .trim()
+                            .isEmpty) {
+                          return 'Field Full Name is Required';
+                        } else {
+                          return null;
+                        }
+                      },
+
+                      maxLength: 20,
+
                       controller: _nameController,
                       cursorColor: Color(0xFFFFFCFC),
                       style: TextStyle(
                         color: Color(0xFFFFFCFC),
                         fontWeight: FontWeight.w600,
                       ),
-                      // onChanged: (value) {
-                      //   name = value;
-                      // },
+
                       decoration: InputDecoration(
+                        errorStyle: TextStyle(
+                          color: Color(0xFFF44336),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+
                         hintText: 'e.g. Sarah Khalid',
                         hintStyle: TextStyle(
                           color: Color(0xFF6D6D6D),
@@ -110,46 +151,39 @@ class WelcomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 18),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                  disabledForegroundColor: Colors.white,
+                  backgroundColor: Theme
+                      .of(context)
+                      .primaryColor,
                   foregroundColor: Color(0xFFFFFCFC),
                   minimumSize: Size(340, 40),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(100),
                   ),
                 ),
-                onPressed: () {
-                  if (_nameController.text.trim().isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => HomeScreen()),
-                    );
+                onPressed: () async {
+                  if (_formKey.currentState?.validate() ?? false)
+                  {
+                    _autovalidateMode = AutovalidateMode.onUnfocus;
+                    final pref = await SharedPreferences.getInstance();
+                    final String? name = pref.getString("username");
+                    if(name?.trim().isEmpty ?? true)
+                    {
+                      await pref.setString("username", _nameController.text);
+                    }
                     _nameController.clear();
-
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)
-                        ),
-                        duration: Duration(seconds: 5),
-                        behavior: SnackBarBehavior.floating,
-                        backgroundColor: Colors.red,
-                        content: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Field Full Name is Required',
-                              style: TextStyle(color: Colors.white,fontSize: 16,fontWeight: FontWeight.bold),
-                            ),
-                            Icon(Icons.error_outline_rounded,color: Colors.white,)
-                          ],
-                        ),
-                      ),
-                    );
+                    Navigator.pushReplacement(context,MaterialPageRoute(builder: (context){
+                      return MainScreen();
+                    }));
                   }
+                  _autovalidateMode = AutovalidateMode.always;
+                  setState(() {
+
+                  });
                 },
                 child: Text(
                   'Let’s Get Started',
@@ -160,6 +194,6 @@ class WelcomeScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
+    ),
+  );
+}}
